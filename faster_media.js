@@ -1,72 +1,87 @@
 // ==UserScript==
 // @name         Faster Media
 // @namespace    http://tampermonkey.net/
-// @version      0.2.11.1
-// @description  Set Youtube & Overcast & Youku PlaybackRate to 1.6 by default
+// @version      0.3.0
+// @description  Set Youtube & Overcast PlaybackRate to 1.75 by default
 // @author       Decradish
 // @match        *www.youtube.com/watch?v=*
 // @match        *overcast.fm/+*
-// @match        *v.youku.com/v_show/id_*
 // @grant        none
 // ==/UserScript==
 
 (function() {
 	'use strict';
 
-	var iPlaybackRate = 1.6, //rate
+	// 核心方法
+	var coreFn = () => {
+		var iPlaybackRate = 1.75, //rate
 		tmVideo = document.getElementsByTagName("video")[0],
-		tmAudio = document.getElementsByTagName("audio")[0],
 		tmMedia = false,
-		OcRange = document.getElementById('speedcontrol'), //Overcast
-		youkuDom = document.getElementById('module_basic_player'); //优酷
+		OcRange = document.getElementById('speedcontrol') //Overcast
 
-	if(youkuDom){
-		var youkuInterval = setInterval(function(){
-			var ykPlayer = document.getElementById('ykPlayer'),
-				videos = document.getElementsByTagName('video');
-			if(ykPlayer && videos && videos.length > 0){
-				clearInterval(youkuInterval);
-				for(var i=0;i<videos.length;i++){
-					videos[i].playbackRate = iPlaybackRate;
-					videos[i].oncanplay = function(){
-						this.playbackRate = iPlaybackRate;
-					}
-				}
+		if(!!tmVideo){
+			tmMedia = tmVideo;
 
-				document.getElementsByClassName('h5player-dashboard')[0].style.display = 'none';
+			var youTubePlayBtn = document.getElementsByClassName('ytp-play-button')
+
+			if(youTubePlayBtn.length > 0){
+				document.getElementsByClassName('ytp-play-button')[0].focus()
 			}
-		}, 10);
-		
-		return false;
-	}
-
-	if(!!tmVideo){
-		tmMedia = tmVideo;
-
-		var youTubePlayBtn = document.getElementsByClassName('ytp-play-button')
-
-		if(youTubePlayBtn.length > 0){
-			document.getElementsByClassName('ytp-play-button')[0].focus()
 		}
-	}
 
-	if(!!OcRange){
-		OcRange.stepUp(4)
-		document.getElementById('speedlabel0').style.color = '#000'
-		document.getElementById('speedlabel1500').style.color = '#fff'
-	}
+		if(!!OcRange){
+			OcRange.stepUp(5)
+			document.getElementById('speedlabel0').style.color = '#000'
+			document.getElementById('speedlabel1500').style.color = '#fff'
+		}
 
-	if(!tmMedia){
-		return false;
-	}
+		if(!tmMedia){
+			obsFn()
+			return false;
+		}
 
-	tmMedia.playbackRate = iPlaybackRate;
-
-	tmMedia.onplay = function(){
 		tmMedia.playbackRate = iPlaybackRate;
-	};
 
-	tmMedia.oncanplay = function(){
-		tmMedia.playbackRate = iPlaybackRate;
-	};
+		tmMedia.onplay = function(){
+			tmMedia.playbackRate = iPlaybackRate;
+		};
+
+		tmMedia.oncanplay = function(){
+			tmMedia.playbackRate = iPlaybackRate;
+		};
+	}
+
+	// 观察器方法
+	const obsFn = () => {
+		// 观察器的执行函数
+		var obsCb = (mutationsList, mutationObserver) => {
+			// 遍历出所有的MutationRecord对象
+			mutationsList.forEach(function (mutation) {
+				// 找一下目标元素
+				const hasTargetElem = [...mutation.addedNodes].some((item => 
+					item.tagName === 'VIDEO'
+				));
+
+				if(hasTargetElem){
+					// 已产生目标元素，停止观察
+					observer.disconnect()
+
+					// 执行核心方法
+					coreFn();
+				}
+			});
+		}
+
+		// 设置一个观察器
+		var observer = new MutationObserver(obsCb);
+
+		// 观察目标元素是否出现
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true
+		});
+	}
+
+	// 触发核心逻辑
+	coreFn();
 })();
